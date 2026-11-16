@@ -1,0 +1,906 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------
+----      API to Update Inward Material Receipt Transactions (IMR) 
+--- -     Written by    : Shriniwas Tilak
+-----     Date Written  : 15th July 2023 
+-----     Modified V1   : Initial Version
+-----     V1 Modified on: 15th July 2023
+---------------------------------------------------------------------------------------------------------------------------------
+----      API to Convert Enquiries to Offers
+---------------------------------------------------------------------------------------------------------------------------------
+create or replace PROCEDURE   INV_UPDATE_IMR_RECEIPT_TRANSACTIONS_API
+(           i_return_code                                       OUT  VARCHAR2,
+            i_return_message                                    OUT  VARCHAR2,
+            i_action                                            IN  VARCHAR2,
+            i_user_id                                           IN  NUMBER,
+            i_organization_id                                   IN  number,
+            i_lob_id                                            IN  number,
+            i_profit_centre_id                                  IN  number,
+            i_client_id                                         IN  number,
+            i_start_date                                        IN  DATE,
+            i_end_date                                          IN  DATE,
+            i_receipt_transaction_id                            IN OUT NUMBER,
+            i_receipt_header_id                                 IN NUMBER,
+            i_receipt_line_id                                   IN NUMBER,
+            i_vendor_party_id                                   IN NUMBER,
+            i_po_header_id                                      IN NUMBER,
+            i_po_line_id                                        IN NUMBER,
+            i_po_distribution_id                                IN NUMBER,
+            i_plan_header_id                                    IN NUMBER,
+            i_plan_detail_id                                    IN NUMBER,
+            i_plan_activity_id                                  IN NUMBER,
+            i_budget_id                                         IN NUMBER,
+            i_budget_line_id                                    IN NUMBER,
+            i_project_id                                        IN NUMBER,
+            i_project_task_id                                   IN NUMBER,
+            i_todo_id                                           IN NUMBER,
+            i_price_list_id                                     IN NUMBER,
+            i_buyer_id                                          IN NUMBER,
+            i_created_by_party_id                               IN NUMBER,
+            i_transaction_date                                  IN DATE,
+            i_rct_type_set_id                                   IN NUMBER,
+            i_rct_type_code_id                                  IN NUMBER,
+            i_inventory_item_id                                 IN NUMBER,
+            i_uom_id                                            IN NUMBER,
+            i_quantity                                          IN NUMBER,
+            i_inv_transaction_id                                IN NUMBER,
+            i_sub_inventory_id                                  IN NUMBER,
+            i_inv_location_id                                   IN NUMBER,
+            i_remarks                                           IN CLOB,
+            i_status_id                                         IN NUMBER
+)   
+AS
+----      Declare Variables and Cursors required for Data Generation
+          err_message              VARCHAR2(200)  :=   null;
+          exists_flag              VARCHAR2(50)   :=   null;
+          i_transaction_type_id    NUMBER         :=   null;
+          i_status_date            DATE           :=   null;
+          i_dummy                  NUMBER         :=   null;
+
+          Some_Error               EXCEPTION;
+
+BEGIN
+
+
+ ----    Validate Start and End Date
+        IF    ((i_end_date is not null)  and  (i_end_date < i_start_date))
+        THEN  i_return_code     := 2;
+              i_return_message  := i_return_message ||  ' - '  ||
+                                   'End Date must be greater or equal to Start Date';
+        END   IF;
+
+
+----      Validate Client ID
+          exists_flag    :=   null;
+          BEGIN
+               SELECT    'Y'
+               INTO      exists_flag
+               FROM      CMN_CLIENT_MASTER
+               WHERE     CLIENT_ID           =    i_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'No Data-Invalid Client ID';
+               WHEN      OTHERS
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Others-Invalid Client ID';
+          END;
+
+----      Validate Organization ID
+          exists_flag   :=  null;
+          BEGIN
+               SELECT    'Y'
+               INTO      exists_flag
+               FROM      CMN_ORGANIZATION_MASTER
+               WHERE     1                   =    1
+               AND       ORGANIZATION_ID     =    i_organization_id
+               AND       CLIENT_ID           =    i_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'No Data-Invalid Organization ID';
+               WHEN      OTHERS
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Others-Invalid Organization ID';
+          END;
+
+----      Validate LOB ID
+          exists_flag := null;
+          BEGIN
+               SELECT    'Y'
+               INTO      exists_flag
+               FROM      CMN_LOB_MASTER
+               WHERE     1                   =   1
+               AND       LOB_ID              =   i_lob_id
+               AND       ORGANIZATION_ID     =   i_organization_id
+               AND       CLIENT_ID           =   i_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'No Data-Invalid LOB ID';
+               WHEN      OTHERS
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Others-Invalid LOB ID';
+          END;
+
+----    Validate Profit Centre ID
+         exists_flag := null;
+        IF(i_profit_centre_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_profit_centre_master
+                    WHERE   profit_centre_id     =  i_profit_centre_id
+                    AND     lob_id               =  i_lob_id
+                    AND     organization_id      =  i_organization_id
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Profit Centre ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Profit Centre ID Passed';
+            END;
+        END IF;
+
+
+-----       VALIDATING receipt header id
+            IF(i_receipt_header_id is null)
+            THEN  i_return_code := 2;
+                  i_return_message  := i_return_message || ' - ' || ' Receipt Header Should not be null';
+            END IF;
+            exists_flag := null;
+            BEGIN
+                SELECT   'Y'
+                INTO    exists_flag
+                FROM    IMR_RECEIPT_HEADERS
+                WHERE   1               =           1
+                AND    RECEIPT_HEADER_ID =     i_receipt_header_id
+                AND    profit_centre_id  =      i_profit_centre_id
+                AND    lob_id            =      i_lob_id
+                AND    organization_id   =      i_organization_id
+                AND    client_id         =      i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Header ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Header ID Passed';
+
+            END;
+
+
+
+-----       VALIDATING receipt header id
+            IF(i_receipt_line_id is null)
+            THEN  i_return_code := 2;
+                  i_return_message  := i_return_message || ' - ' || ' Receipt Line Should not be null';
+            END IF;
+            exists_flag := null;
+            BEGIN
+                SELECT   'Y'
+                INTO    exists_flag
+                FROM    IMR_RECEIPT_LINES
+                WHERE   1               =           1
+                AND    RECEIPT_HEADER_ID =     i_receipt_header_id
+                AND    RECEIPT_LINE_ID   =     i_receipt_line_id
+                AND    profit_centre_id  =      i_profit_centre_id
+                AND    lob_id            =      i_lob_id
+                AND    organization_id   =      i_organization_id
+                AND    client_id         =      i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Line ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Line ID Passed';
+
+            END;
+
+
+----    Validate Vendor Party ID
+        IF(i_vendor_party_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_vendor_master_v
+                    WHERE   party_id             =  i_vendor_party_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Vendor Party ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Vendor Party ID Others';
+            END;
+        END IF; 
+
+
+----      Populate Default Value for Transaction Type ID
+          BEGIN
+               SELECT    transaction_type_id
+               INTO      i_transaction_type_id
+               FROM      cmn_transaction_types 
+               WHERE     1                                       =    1
+               AND       upper(trim(transaction_type_code))      =    'MANAGE_IMR_RECEIPT_TRANSACTIONS'
+               AND       application_id                          =    801
+               AND       client_id                               =    i_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_transaction_type_id   :=  80119;
+               WHEN      OTHERS
+               THEN      i_transaction_type_id   :=  80119;
+          END;
+
+
+
+
+----   validating Po header id 
+
+        IF(i_po_header_id is null)
+        THEN  i_return_code := 2;
+              i_return_message := i_return_message || ' - ' || 'PO Header Should not be null';
+        END IF;
+
+        exists_flag := null;
+        BEGIN
+                SELECT    'Y'
+                INTO     exists_flag
+                FROM     pur_order_headers
+                WHERE    1                  =           1
+                AND     po_header_id        =          i_po_header_id
+                AND     profit_centre_id    =          i_profit_centre_id
+                AND     lob_id              =          i_lob_id
+                AND     organization_id     =          i_organization_id
+                AND     client_id           =          i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid PO Header ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid PO Header ID Others';
+        END;
+
+
+----   validating Po line id 
+
+        IF(i_po_line_id is null)
+        THEN  i_return_code := 2;
+              i_return_message := i_return_message || ' - ' || 'PO Line Should not be null';
+        END IF;
+
+        exists_flag := null;
+        BEGIN
+                SELECT    'Y'
+                INTO     exists_flag
+                FROM     pur_order_lines
+                WHERE    1                  =           1
+                AND     po_header_id        =          i_po_header_id
+                AND     po_line_id          =          i_po_line_id
+                AND     profit_centre_id    =          i_profit_centre_id
+                AND     lob_id              =          i_lob_id
+                AND     organization_id     =          i_organization_id
+                AND     client_id           =          i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid PO Line ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid PO Line ID Others';
+        END;
+
+
+
+
+----    Validate Plan Header ID
+         exists_flag := null;
+        IF(i_plan_header_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    epb_plan_headers
+                    WHERE   plan_header_id       =  i_plan_header_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Header ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Header ID Passed';
+            END;
+        END IF; 
+
+----    Validate Plan Detail ID
+        exists_flag := null;
+        IF(i_plan_detail_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    epb_plan_details
+                    WHERE   plan_detail_id       =  i_plan_detail_id
+                    AND     plan_header_id       =  i_plan_header_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Detail ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Detail ID Passed';
+            END;
+        END IF; 
+
+
+----    Validate Plan Activity ID
+        exists_flag := null;
+        IF(i_plan_activity_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    epb_plan_activities
+                    WHERE       1                =      1
+                    AND     plan_activity_id     =  i_plan_activity_id
+                    AND     plan_detail_id       =  i_plan_detail_id
+                    AND     plan_header_id       =  i_plan_header_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Activity ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Activity ID Passed';
+            END;
+        END IF; 
+
+----    Validate Budget ID
+            exists_flag := null;
+        IF(i_budget_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    fins_gl_budgets
+                    WHERE   budget_id            =  i_budget_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Header ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Plan Header ID Passed';
+            END;
+        END IF; 
+
+----    Validate Budget Line ID
+        exists_flag := null;
+        IF(i_budget_line_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    fins_gl_budget_lines
+                    WHERE   budget_line_id       =  i_budget_line_id
+                    AND     budget_id            =  i_budget_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Buget Line ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Budget Line ID Passed';
+            END;
+        END IF;
+
+
+----    Validate Project ID
+        IF(i_project_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    pam_projects_all
+                    WHERE   project_id           =  i_project_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Project ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Project ID Passed';
+            END;
+        END IF;  
+
+----    Validate Project Task ID
+        IF(i_project_task_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    pam_project_tasks
+                    WHERE   project_task_id      =  i_project_task_id
+                    AND     project_id           =  i_project_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Project Task ID Passed';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Project Task ID Passed';
+            END;
+        END IF; 
+
+
+----    Validate ToDo  ID
+        IF(i_todo_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    CMN_MANAGE_TODOS_V
+                    WHERE   todo_id             =  i_todo_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid TODO ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid TODO ID Others';
+            END;
+        END IF;
+
+
+----    Validate Buyer  ID
+        IF(i_buyer_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    pur_buyers
+                    WHERE   buyer_id             =  i_buyer_id                                          
+                    AND     client_id            =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Buyer ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Buyer ID Others';
+            END;
+        END IF;
+
+
+----    Validate PRICE list  ID
+        IF(i_price_list_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_price_list_headers_v
+                    WHERE   price_list_id               =   i_price_list_id                                       
+                    AND     client_id                   =  i_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Price List ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Price List ID Others';
+            END;
+        END IF;
+
+
+-- ---- validating created by party id
+--         IF(i_created_by_party_id is not null)
+--         THEN
+--                 exists_flag := null;
+--         BEGIN
+--                 SELECT          'Y'
+--                 INTO       exists_flag
+--                 FROM      cmn_party_master_v
+--                 WHERE     1                     =               1
+--                 AND      party_id               =              i_created_by_party_id
+--                 AND      client_id              =              i_client_id;
+--                 EXCEPTION
+--                 WHEN    NO_DATA_FOUND
+--                 THEN    i_return_code       :=  2;
+--                             i_return_message    :=  i_return_message || ' - ' ||
+--                                                     'Invalid Created By Party ID No Data';
+--                 WHEN    OTHERS
+--                 THEN    i_return_code       :=  2;
+--                             i_return_message    :=  i_return_message || ' - ' ||
+--                                                     'Invalid Created By Party ID Others';
+
+--         END;
+--         END IF;
+
+-----  Validating rct type set id
+         BEGIN  
+                SELECT  'Y'
+                INTO    exists_flag
+                FROM    cmn_category_master
+                WHERE   1                      =  1
+                AND     category_id            =  i_rct_type_set_id
+                AND     client_id              =  i_client_id;
+            EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    i_return_code           :=  2;
+                        i_return_message        :=  i_return_message || ' - ' ||
+                                                    'Invalid  Receipt Type Set ID Passed';
+                WHEN    OTHERS
+                THEN    i_return_code           :=  2;
+                        i_return_message        :=  i_return_message || ' - ' ||
+                                                    'Invalid  Receipt Type Set ID Passed';
+            END;
+
+
+----    Validate RCT Type Code ID
+        exists_flag := null;
+        BEGIN  
+                SELECT  'Y'
+                INTO    exists_flag
+                FROM    cmn_sub_category_master
+                WHERE   category_id              =  i_rct_type_set_id  
+                AND     sub_category_id          =  i_rct_type_code_id
+                AND     client_id                =  i_client_id;
+        EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    i_return_code           :=  2;
+                        i_return_message        :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Type Code ID Passed';
+                WHEN    OTHERS
+                THEN    i_return_code           :=  2;
+                        i_return_message        :=  i_return_message || ' - ' ||
+                                                    'Invalid Receipt Type Code ID Passed';
+        END;
+
+
+--- validating inventory item id
+
+        IF(i_inventory_item_id is null)
+        THEN    i_return_code := 2;
+                i_return_message := i_return_message || ' - ' || 'Inventory Item Id Should Not Be Null';
+        END IF;
+
+        exists_flag := null;
+        BEGIN
+            SELECT      'Y'
+            INTO        exists_flag
+            FROM        cmn_item_master
+            WHERE        1                      =        1
+            AND     inventory_item_id           =       i_inventory_item_id
+            AND     profit_centre_id            =  i_profit_centre_id
+            AND     lob_id                      =  i_lob_id
+            AND     organization_id             =  i_organization_id
+            AND         client_id               =       i_client_id;
+
+        EXCEPTION
+                WHEN  NO_DATA_FOUND
+                THEN    i_return_code := 2;
+                        i_return_message := i_return_message || '-' || 'Invalid Inventory Item Id';
+
+                WHEN  OTHERS
+                THEN   i_return_code := 2;
+                       i_return_message := i_return_message || '-' || 'Invalid Inventory Item Id'; 
+        END;
+
+
+----    Validate  UOM  ID
+        IF(i_uom_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    inv_unit_of_measures
+                    WHERE   uom_id             =  i_uom_id;                                      
+
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid  UOM ID No Data';
+                    WHEN    OTHERS
+                    THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid  UOM ID Others';
+            END;
+        END IF;
+
+
+--- validating inv transaction id
+
+        IF(i_inv_transaction_id is not null)
+        THEN    
+
+        exists_flag := null;
+        BEGIN
+            SELECT      'Y'
+            INTO        exists_flag
+            FROM        INV_MATERIAL_TRANSACTIONS
+            WHERE        1                      =        1
+            AND     INV_TRANSACTION_ID           =       i_inv_transaction_id
+            AND     profit_centre_id            =  i_profit_centre_id
+            AND     lob_id                      =  i_lob_id
+            AND     organization_id             =  i_organization_id
+            AND         client_id               =       i_client_id;
+
+        EXCEPTION
+                WHEN  NO_DATA_FOUND
+                THEN    i_return_code := 2;
+                        i_return_message := i_return_message || '-' || 'Invalid Inv Transaction Id';
+
+                WHEN  OTHERS
+                THEN   i_return_code := 2;
+                       i_return_message := i_return_message || '-' || 'Invalid Inv Transaction Id'; 
+        END;
+
+        END IF;
+
+
+---- validating sub inventory id
+        IF(i_sub_inventory_id is  not null)
+        THEN    
+                exists_flag := null;
+        BEGIN
+                SELECT          'Y'
+                INTO       exists_flag
+                FROM      inv_sub_inventories
+                WHERE     1                     =               1
+                AND      sub_inventory_id       =              i_sub_inventory_id
+                AND      profit_centre_id       =              i_profit_centre_id
+                AND      lob_id                 =              i_lob_id
+                AND      organization_id        =              i_organization_id
+                AND      client_id              =              i_client_id;
+                EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Sub Inventory ID No Data';
+                WHEN    OTHERS
+                THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Sub Inventory ID Others';
+
+        END;
+
+        END IF;
+
+---- validating inv location id
+        IF(i_inv_location_id is not null)
+        THEN   
+                exists_flag := null;
+        BEGIN
+                SELECT          'Y'
+                INTO       exists_flag
+                FROM      inv_locations
+                WHERE     1                     =               1
+                AND      inv_location_id        =              i_inv_location_id
+                AND      profit_centre_id       =              i_profit_centre_id
+                AND      lob_id                 =              i_lob_id
+                AND      organization_id        =              i_organization_id
+                AND      client_id              =              i_client_id;
+                EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Inventory Location ID No Data';
+                WHEN    OTHERS
+                THEN    i_return_code       :=  2;
+                            i_return_message    :=  i_return_message || ' - ' ||
+                                                    'Invalid Inventory Location ID Others';
+
+        END;
+        END IF;
+
+
+---- updating received_qty, accepted_qty, rejected_qty, returned_qty
+        BEGIN
+                CASE  i_status_id
+                WHEN  10041
+                THEN 
+                        BEGIN
+                                UPDATE pur_order_lines pol
+                                SET
+                                        pol.received_quantity  = i_quantity 
+                                WHERE   1                      =        1
+                                AND     po_line_id             =       i_po_line_id
+                                AND     po_header_id           =       i_po_header_id
+                                AND     client_id              =       i_client_id;
+                        END;
+                WHEN  10044
+                THEN 
+                        BEGIN
+                                UPDATE pur_order_lines pol
+                                SET
+                                        pol.accepted_quantity  = i_quantity 
+                                WHERE   1                      =        1
+                                AND     po_line_id             =       i_po_line_id
+                                AND     po_header_id           =       i_po_header_id
+                                AND     client_id              =       i_client_id;
+                        END;
+                WHEN  10045
+                THEN 
+                        BEGIN
+                                UPDATE pur_order_lines pol
+                                SET
+                                        pol.rejected_quantity  = i_quantity 
+                                WHERE   1                      =        1
+                                AND     po_line_id             =       i_po_line_id
+                                AND     po_header_id           =       i_po_header_id
+                                AND     client_id              =       i_client_id;
+                        END;
+                WHEN 10046
+                THEN 
+                        BEGIN
+                                UPDATE pur_order_lines pol
+                                SET
+                                        pol.returned_quantity  = i_quantity 
+                                WHERE   1                      =        1
+                                AND     po_line_id             =       i_po_line_id
+                                AND     po_header_id           =       i_po_header_id
+                                AND     client_id              =       i_client_id;
+                        END;
+                ELSE   i_dummy  := null;
+                END CASE;
+        END;
+
+
+
+
+----      Checking if there is any error, if return code is =! 0 then it will raise error
+          IF    (i_return_code <> 0)
+          THEN  raise  Some_Error;
+          END IF;
+
+
+----      Action
+          CASE UPPER(i_action)
+          WHEN 'I'  THEN NULL;
+          WHEN 'A'  THEN NULL;
+          WHEN 'C'  THEN NULL;
+          WHEN 'U'  THEN NULL;
+          ELSE i_return_code       :=   2;
+               i_return_message    :=   'Invalid Action'||i_action;
+          END CASE;
+
+
+----      Checking Action
+          IF(UPPER(i_action)IN('U'))
+          THEN
+
+          BEGIN
+               UPDATE   IMR_RECEIPT_TRANSACTIONS
+               SET
+
+                                LAST_UPDATE_DATE            =   sysdate          ,                                              
+                                LAST_UPDATED_BY             =   i_user_id           ,                                          
+ --                               START_DATE                  =   i_start_date                ,                                      
+                                END_DATE                    =   i_end_date                  ,                                      
+--                                STATUS_ID                   =   i_status_id                 ,                                      
+ --                               STATUS_DATE                 =   i_status_date               ,                                      
+                                RECEIPT_HEADER_ID           =   i_receipt_header_id         ,                                              
+                                RECEIPT_LINE_ID             =   i_receipt_line_id           ,                                          
+                                VENDOR_PARTY_ID             =   i_vendor_party_id           ,                                          
+                                PO_HEADER_ID                =   i_po_header_id              ,                                          
+                                PO_LINE_ID                  =   i_po_line_id                ,                                      
+                                PO_DISTRIBUTION_ID          =   i_po_distribution_id        ,                                              
+                                PLAN_HEADER_ID              =   i_plan_header_id            ,                                          
+                                PLAN_DETAIL_ID              =   i_plan_detail_id            ,                                          
+                                PLAN_ACTIVITY_ID            =   i_plan_activity_id          ,                                              
+                                BUDGET_ID                   =   i_budget_id                 ,                                      
+                                BUDGET_LINE_ID              =   i_budget_line_id            ,                                          
+                                PROJECT_ID                  =   i_project_id                ,                                      
+                                PROJECT_TASK_ID             =   i_project_task_id           ,                                          
+                                TODO_ID                     =   i_todo_id                   ,                                  
+                                PRICE_LIST_ID               =   i_price_list_id             ,                                          
+                                BUYER_ID                    =   i_buyer_id                  ,                                      
+                                CREATED_BY_PARTY_ID         =   i_created_by_party_id       ,                                              
+                                TRANSACTION_DATE            =   i_transaction_date          ,                                              
+                                RCT_TYPE_SET_ID             =   i_rct_type_set_id           ,                                          
+                                RCT_TYPE_CODE_ID            =   i_rct_type_code_id          ,                                              
+                                INVENTORY_ITEM_ID           =   i_inventory_item_id         ,                                              
+                                UOM_ID                      =   i_uom_id                    ,                                  
+                                QUANTITY                    =   i_quantity                  ,                                      
+                                INV_TRANSACTION_ID          =   i_inv_transaction_id        ,                                              
+                                SUB_INVENTORY_ID            =   i_sub_inventory_id          ,                                              
+                                INV_LOCATION_ID             =   i_inv_location_id           ,                                          
+                                REMARKS                     =   i_remarks                    
+                        WHERE    1                          =       1
+                        AND     RECEIPT_TRANSACTION_ID      =   i_receipt_transaction_id
+                        AND     RECEIPT_LINE_ID             =   i_receipt_line_id
+                        AND     RECEIPT_HEADER_ID           =   i_receipt_header_id
+                        AND     profit_centre_id            =     i_profit_centre_id
+                        AND     lob_id                      =     i_lob_id
+                        AND     organization_id             =     i_organization_id
+                        AND     CLIENT_ID                   =     i_client_id;
+
+
+
+                            commit;
+
+
+
+                 EXCEPTION
+                              WHEN OTHERS
+                              THEN
+                                    i_return_code := 2;
+                                    i_return_message := i_return_message || ' - ' || 'unable to update' || SQLERRM;
+                                    raise Some_Error;
+                              RETURN;
+
+                END;
+
+
+        END IF;
+
+                i_return_code      :=  0;
+                i_return_message   :=  'IMR Receipt Transactions Updated  Successfully';
+                Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,'Execution Successfull for Updating of IMR Receipt Transactions');
+                DBMS_OUTPUT.put_line ('Execution Successful for Updating of IMR Receipt Transactions ');
+                RETURN;
+
+
+     EXCEPTION
+            WHEN       Some_Error
+            THEN       i_return_code    :=  2;
+                       i_return_message :=  i_return_message || ' - ' ||
+                                    'Some error Has Occurred...Existing...Unsuccessful Execution';
+               RETURN; 
+
+            WHEN       OTHERS
+            THEN       DBMS_OUTPUT.put_line (i_return_message || ' - ' || SQLERRM);
+                        Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,i_return_message || ' - ' || SQLERRM);
+
+                        i_return_code    :=  2;
+                        i_return_message :=  i_return_message ||  ' - ' || SQLERRM;
+               RETURN;
+END INV_UPDATE_IMR_RECEIPT_TRANSACTIONS_API;
+---------------------------------------------------------------------------------------------------------------------------------

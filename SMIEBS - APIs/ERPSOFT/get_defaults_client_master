@@ -1,0 +1,359 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------  
+----      Script Name   : Creation of Client Master Based on REST API
+-----     Written by    : Shriniwas Tilak
+-----     Date Written  : 13th September 2026 (Ganesh Chaturthi)
+-----     Modified V1   : Shriniwas   Tilak
+-----     V1 Modified on: 13th September 2026 (Ganesh Chaturthi)
+--------------------------------------------------------------------------------------------------------------------------------------------------     
+create  or replace procedure get_defaults_client_master
+(
+    RETURN_CODE         OUT NUMBER,
+    RETURN_MESSAGE      OUT VARCHAR2,
+    P1_NEW_CLIENT_ID    IN VARCHAR2
+)
+AS
+
+----    REST API URL
+        l_url             VARCHAR2(4000) := 
+        'https://g425bf31b05c082-shrisoft.adb.ap-mumbai-1.oraclecloudapps.com/ords/restsoft/cmn_client_master/';
+    
+        l_req             UTL_HTTP.req;
+        l_resp            UTL_HTTP.resp;
+        l_buffer          VARCHAR2(32767);
+        l_json_text       CLOB;
+
+----    JSON parsing objects
+        l_json_obj        JSON_OBJECT_T;
+        l_items_arr       JSON_ARRAY_T;
+        l_item            JSON_OBJECT_T;
+
+----    Fields
+
+BEGIN
+----    Initialize CLOB
+        RETURN_CODE       := 0;
+        RETURN_MESSAGE    := NULL;
+
+        DBMS_LOB.createtemporary(l_json_text, TRUE);
+
+----    Set required headers
+        APEX_WEB_SERVICE.g_request_headers(1).name  := 'Content-Type';
+        APEX_WEB_SERVICE.g_request_headers(1).value := 'application/json';
+
+----    Call REST API
+        l_json_text := apex_web_service.make_rest_request 
+                      ( p_url         => l_url,
+                        p_http_method => 'GET'
+                      );
+
+----    Check if response is empty
+        IF  l_json_text IS NULL THEN
+            raise_application_error(-20002, 'No response from API.');
+            RETURN_CODE       := 2;
+            RETURN_MESSAGE    := 'Defaults can not be loaded for Client Master. No response from API.'; 
+        END IF;
+
+----    Parse JSON response                   
+        APEX_JSON.parse(l_json_text);
+        DBMS_OUTPUT.PUT_LINE(l_json_text);
+        RETURN_MESSAGE  :=  'API called. URL: ' || l_url || ' Response: ' || l_json_text;
+
+        BEGIN
+----    Populate the Data 
+              INSERT INTO cmn_client_master 
+                    ( creation_date,
+                      created_by,
+                      last_update_date,
+                      last_updated_by,
+                      start_date,
+                      end_date,
+                      status_id,
+                      status_date,
+                      transaction_related_details,
+                      directory_name,
+                      file_name,
+                      mime_type,
+                      char_set,
+                      file_comments,
+                      place_lattitude,
+                      place_longitude,
+                      place_ip_address,
+                      transaction_application_id,
+                      transaction_type_id,
+                      transaction_process_id,
+                      transaction_level_id,
+                      client_id,
+                      client_type_set_id,
+                      client_type_code_id,
+                      client_code,
+                      client_name,
+                      description,
+                      incorporation_date,
+                      registered_location_id,
+                      ho_location_id,
+                      client_class_set_id,
+                      client_class_code_id,
+                      isd_code,
+                      std_code,
+                      phone_number,
+                      mobile_number,
+                      gst_code,
+                      indirect_tax_code,
+                      direct_tax_code,
+                      email_id,
+                      client_head_id,
+                      client_license_type,
+                      suite_cost,
+                      suite_sp,
+                      suite_amc_cost,
+                      suite_amc_sp,
+                      min_total_user_cost,
+                      min_total_user_sp,
+                      per_user_cost,
+                      per_user_sp,
+                      no_of_users,
+                      per_user_amc_cost,
+                      per_user_amc_sp,
+                      min_total_applications_cost,
+                      min_total_applications_sp,
+                      total_applications_cost,
+                      total_applications_sp,
+                      total_no_of_applications,
+                      total_applications_amc_cost,
+                      total_applications_amc_sp,
+                      min_total_sas_cost,
+                      min_total_sas_sp,
+                      total_sas_cost,
+                      total_sas_sp,
+                      total_sas_users,
+                      total_sas_applications,
+                      total_sas_amc_cost,
+                      total_sas_amc_sp,
+                      host_name,
+                      host_ip_address,
+                      host_domain_name,
+                      enable_help,
+                      app_url,
+                      app_theme,
+                      gstin,
+                      legal_name,
+                      trade_name,
+                      address_1,
+                      address_2,
+                      address_3,
+                      location,
+                      pin_code,
+                      portal_url,
+                      login_id,
+                      login_password,
+                      erp_start_date,
+                      erp_financials_start_date
+                    ) 
+              SELECT  creation_date,
+                      created_by,
+                      last_update_date,
+                      last_updated_by,
+                      start_date,
+                      end_date,
+                      status_id,
+                      status_date,
+                      transaction_related_details,
+                      directory_name,
+                      file_name,
+                      mime_type,
+                      char_set,
+                      file_comments,
+                      place_lattitude,
+                      place_longitude,
+                      place_ip_address,
+                      transaction_application_id,
+                      transaction_type_id,
+                      transaction_process_id,
+                      transaction_level_id,
+                      p1_new_client_id,
+                      client_type_set_id,
+                      client_type_code_id,
+                      client_code,
+                      client_name,
+                      description,
+                      incorporation_date,
+                      registered_location_id,
+                      ho_location_id,
+                      client_class_set_id,
+                      client_class_code_id,
+                      isd_code,
+                      std_code,
+                      phone_number,
+                      mobile_number,
+                      gst_code,
+                      indirect_tax_code,
+                      direct_tax_code,
+                      email_id,
+                      client_head_id,
+                      client_license_type,
+                      suite_cost,
+                      suite_sp,
+                      suite_amc_cost,
+                      suite_amc_sp,
+                      min_total_user_cost,
+                      min_total_user_sp,
+                      per_user_cost,
+                      per_user_sp,
+                      no_of_users,
+                      per_user_amc_cost,
+                      per_user_amc_sp,
+                      min_total_applications_cost,
+                      min_total_applications_sp,
+                      total_applications_cost,
+                      total_applications_sp,
+                      total_no_of_applications,
+                      total_applications_amc_cost,
+                      total_applications_amc_sp,
+                      min_total_sas_cost,
+                      min_total_sas_sp,
+                      total_sas_cost,
+                      total_sas_sp,
+                      total_sas_users,
+                      total_sas_applications,
+                      total_sas_amc_cost,
+                      total_sas_amc_sp,
+                      host_name,
+                      host_ip_address,
+                      host_domain_name,
+                      enable_help,
+                      app_url,
+                      app_theme,
+                      gstin,
+                      legal_name,
+                      trade_name,
+                      address_1,
+                      address_2,
+                      address_3,
+                      location,
+                      pin_code,
+                      portal_url,
+                      login_id,
+                      login_password,
+                      erp_start_date,
+                      erp_financials_start_date
+              FROM    JSON_TABLE  
+                      ( l_json_text, '$[*]'
+                        COLUMNS (
+                                  creation_date                   DATE          PATH '$.creation_date',
+                                  created_by                      VARCHAR2(30)  PATH '$.created_by',
+                                  last_update_date                DATE          PATH '$.last_update_date',
+                                  last_updated_by                 VARCHAR2(30)  PATH '$.last_updated_by',
+                                  start_date                      DATE          PATH '$.start_date'      ,
+                                  end_date                        DATE          PATH '$.end_date'      ,
+                                  status_id                       NUMBER        PATH '$.status_id'      ,
+                                  status_date                     DATE          PATH '$.status_date'      ,
+                                  transaction_related_details     CLOB          PATH '$.transaction_related_details'      ,
+                                  directory_name                  VARCHAR2(100) PATH '$.directory_name'      ,
+                                  file_name                       VARCHAR2(100) PATH '$.file_name'      ,
+                                  mime_type                       VARCHAR2(100) PATH '$.mime_type'      ,
+                                  char_set                        VARCHAR2(100) PATH '$.char_set'      ,
+                                  file_comments                   VARCHAR2(200) PATH '$.file_comments'      ,
+                                  place_lattitude                 NUMBER        PATH '$.place_lattitude'      ,
+                                  place_longitude                 NUMBER        PATH '$.place_longitude'      ,
+                                  place_ip_address                VARCHAR2(100) PATH '$.place_ip_address'      ,
+                                  transaction_application_id      NUMBER        PATH '$.transaction_application_id'      ,
+                                  transaction_type_id             NUMBER        PATH '$.transaction_type_id'      ,
+                                  transaction_process_id          NUMBER        PATH '$.transaction_process_id'      ,
+                                  transaction_level_id            NUMBER        PATH '$.transaction_level_id'      ,
+                                  P1_NEW_CLIENT_ID, ---- client_id                       NUMBER        PATH '$.client_id'      ,
+                                  client_type_set_id              NUMBER        PATH '$.client_type_set_id'      ,
+                                  client_type_code_id             NUMBER        PATH '$.client_type_code_id'      ,
+                                  client_code                     VARCHAR2(100) PATH '$.client_code'      ,
+                                  client_name                     VARCHAR2(100) PATH '$.client_name'      ,
+                                  description                     VARCHAR2(200) PATH '$.description'      ,
+                                  incorporation_date              DATE          PATH '$.incorporation_date'      ,
+                                  registered_location_id          NUMBER        PATH '$.registered_location_id'      ,
+                                  ho_location_id                  NUMBER        PATH '$.ho_location_id'      ,
+                                  client_class_set_id             NUMBER        PATH '$.client_class_set_id'      ,
+                                  client_class_code_id            NUMBER        PATH '$.client_class_code_id'      ,
+                                  isd_code                        VARCHAR2(10)  PATH '$.isd_code'      ,
+                                  std_code                        VARCHAR2(10)  PATH '$.std_code'      ,
+                                  phone_number                    VARCHAR2(20)  PATH '$.phone_number'      ,
+                                  mobile_number                   VARCHAR2(20)  PATH '$.mobile_number'      ,
+                                  gst_code                        VARCHAR2(20)  PATH '$.gst_code'      ,
+                                  indirect_tax_code               VARCHAR2(20)  PATH '$.indirect_tax_code'      ,
+                                  direct_tax_code                 VARCHAR2(20)  PATH '$.direct_tax_code'      ,
+                                  email_id                        VARCHAR2(100) PATH '$.email_id'      ,
+                                  client_head_id                  NUMBER        PATH '$.client_head_id'      ,
+                                  client_license_type             VARCHAR2(100) PATH '$.client_license_type'      ,
+                                  suite_cost                      NUMBER        PATH '$.suite_cost'      ,
+                                  suite_sp                        NUMBER        PATH '$.suite_sp'      ,
+                                  suite_amc_cost                  NUMBER        PATH '$.suite_amc_cost'      ,
+                                  suite_amc_sp                    NUMBER        PATH '$.suite_amc_sp'      ,
+                                  min_total_user_cost             NUMBER        PATH '$.min_total_user_cost'      ,
+                                  min_total_user_sp               NUMBER        PATH '$.min_total_user_sp'      ,
+                                  per_user_cost                   NUMBER        PATH '$.per_user_cost'      ,
+                                  per_user_sp                     NUMBER        PATH '$.per_user_sp'      ,
+                                  no_of_users                     NUMBER        PATH '$.no_of_users'      ,
+                                  per_user_amc_cost               NUMBER        PATH '$.per_user_amc_cost'      ,
+                                  per_user_amc_sp                 NUMBER        PATH '$.per_user_amc_sp'      ,
+                                  min_total_applications_cost     NUMBER        PATH '$.min_total_applications_cost'      ,
+                                  min_total_applications_sp       NUMBER        PATH '$.min_total_applications_sp'      ,
+                                  total_applications_cost         NUMBER        PATH '$.total_applications_cost'      ,
+                                  total_applications_sp           NUMBER        PATH '$.total_applications_sp'      ,
+                                  total_no_of_applications        NUMBER        PATH '$.total_no_of_applications'      ,
+                                  total_applications_amc_cost     NUMBER        PATH '$.total_applications_amc_cost'      ,
+                                  total_applications_amc_sp       NUMBER        PATH '$.total_applications_amc_sp'      ,
+                                  min_total_sas_cost              NUMBER        PATH '$.min_total_sas_cost'      ,
+                                  min_total_sas_sp                NUMBER        PATH '$.min_total_sas_sp'      ,
+                                  total_sas_cost                  NUMBER        PATH '$.total_sas_cost'      ,
+                                  total_sas_sp                    NUMBER        PATH '$.total_sas_sp'      ,
+                                  total_sas_users                 NUMBER        PATH '$.total_sas_users'      ,
+                                  total_sas_applications          NUMBER        PATH '$.total_sas_applications'      ,
+                                  total_sas_amc_cost              NUMBER        PATH '$.total_sas_amc_cost'      ,
+                                  total_sas_amc_sp                NUMBER        PATH '$.total_sas_amc_sp'      ,
+                                  host_name                       VARCHAR2(100) PATH '$.host_name'      ,
+                                  host_ip_address                 VARCHAR2(100) PATH '$.host_ip_address'      ,
+                                  host_domain_name                VARCHAR2(100) PATH '$.host_domain_name'      ,
+                                  enable_help                     VARCHAR2(10)  PATH '$.enable_help'      ,
+                                  app_url                         VARCHAR2(200) PATH '$.app_url'      ,
+                                  app_theme                       VARCHAR2(100) PATH '$.app_theme'      ,
+                                  gstin                           VARCHAR2(50)  PATH '$.gstin'      ,
+                                  legal_name                      VARCHAR2(200) PATH '$.legal_name'      ,
+                                  trade_name                      VARCHAR2(200) PATH '$.trade_name'      ,
+                                  address_1                       VARCHAR2(200) PATH '$.address_1'      ,
+                                  address_2                       VARCHAR2(200) PATH '$.address_2'      ,
+                                  address_3                       VARCHAR2(200) PATH '$.address_3'      ,
+                                  location                        VARCHAR2(200) PATH '$.location'      ,
+                                  pin_code                        VARCHAR2(20)  PATH '$.pin_code'      ,
+                                  portal_url                      VARCHAR2(200) PATH '$.portal_url'      ,
+                                  login_id                        VARCHAR2(100) PATH '$.login_id'      ,
+                                  login_password                  VARCHAR2(100) PATH '$.login_password'      ,
+                                  erp_start_date                  DATE          PATH '$.erp_start_date'      ,
+                                  erp_financials_start_date       DATE          PATH '$.erp_financials_start_date'
+                                )
+                      );
+                      commit;
+        EXCEPTION
+        WHEN        OTHERS 
+        THEN        RETURN_CODE       := 3;
+                    RETURN_MESSAGE    := 'Error parsing JSON response: ' || SQLERRM;
+                    RAISE;
+        END;
+
+----    Loop through items
+        FOR   i   IN  0 .. l_items_arr.get_size - 1 
+        LOOP
+              l_item := TREAT(l_items_arr.get(i) AS JSON_OBJECT_T);
+        END LOOP;
+    
+----    Commit changes and clean up memory
+        COMMIT;
+        DBMS_LOB.freetemporary(l_json_text);
+EXCEPTION
+WHEN    OTHERS 
+THEN    UTL_HTTP.end_response(l_resp);
+        IF    DBMS_LOB.istemporary(l_json_text) = 1 
+        THEN  DBMS_LOB.freetemporary(l_json_text);
+        END   IF;
+
+        RETURN_CODE      := -1;
+        RETURN_MESSAGE   := SQLERRM;
+        RAISE;
+END;
+--------------------------------------------------------------------------------------------------------------------------------------------------     

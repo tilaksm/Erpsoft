@@ -1,0 +1,372 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------
+----      Query Which will Return All User and Other Details Required to be Loaded once Logged in
+--- -     Written by    : Manali Kulkarni
+-----     Date Written  : 20th Februaryy 2021 
+-----     Modified V1   : Shriniwas Tilak
+-----     V1 Modified on: 1st March 2023
+---------------------------------------------------------------------------------------------------------------------------------
+----      User Details  
+---------------------------------------------------------------------------------------------------------------------------------
+create or replace PROCEDURE    CRM_REQUIREMENT_RESULT_API
+    (   p_return_code                      OUT  VARCHAR2,
+        p_return_message                   OUT  VARCHAR2,
+        p_action                           IN   VARCHAR2,
+        p_user_id                          IN   NUMBER,
+        p_start_date                       IN   DATE,
+        p_end_date                         IN   DATE,
+        p_application_id                   IN   NUMBER,
+        p_client_id                        IN   NUMBER, 
+        p_organization_id                  IN   NUMBER, 
+        p_lob_id                           IN   NUMBER, 
+        p_profit_centre_id                 IN   NUMBER, 
+        p_requirement_result_id            IN  OUT NUMBER,
+        p_requirement_id                   IN   NUMBER,
+        p_result_reason_number             IN  OUT NUMBER,
+        p_result_reason_cat_id             IN   NUMBER,
+        p_result_reason_sub_cat_id         IN   NUMBER,
+        p_result_details                   IN   VARCHAR2,
+        p_result_amount                    IN   NUMBER,
+        p_competitor_party_id              IN   NUMBER,
+        p_place_lattitude                  IN   VARCHAR2,
+        p_place_longitude                  IN   VARCHAR2,
+        p_place_ip_address                 IN   VARCHAR2
+    )
+
+    AS
+
+----    Declare Variables and Cursors required for generation
+        err_message           varchar2(200)    :=  null;
+        exists_flag           varchar2(01)     :=  null;
+        dummy_flag            varchar2(01)     :=  null;
+        recs_added            number           :=  0;
+        vNum                  number           :=  0;
+
+        Some_Error            EXCEPTION;
+
+BEGIN
+        Apex_Util.Set_Session_State('RETURN_MESSAGE' ,'Execution Started for Maintaining Requirement Results');
+        DBMS_OUTPUT.put_line ('Execution Started for Maintaining CRM Requirement Results');
+
+----    Start of Maintaining CRM Requirement Results
+        p_return_code          := 0;            ----  Successful Execution
+        p_return_message       := ' '; 
+
+
+----      Validate Organization ID
+          exists_flag   :=  null;
+          BEGIN
+               SELECT    'Y'
+               INTO      exists_flag
+               FROM      CMN_ORGANIZATION_MASTER
+               WHERE     1                   =    1
+               AND       ORGANIZATION_ID     =    p_organization_id
+               AND       CLIENT_ID           =    p_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      p_return_code       :=   2;
+                         p_return_message    :=   p_return_message||' - '||'No Data-Invalid Organization ID';
+               WHEN      OTHERS
+               THEN      p_return_code       :=   2;
+                         p_return_message    :=   p_return_message||' - '||'Others-Invalid Organization ID';
+          END;
+
+----      Validate LOB ID
+          exists_flag := null;
+          BEGIN
+               SELECT    'Y'
+               INTO      exists_flag
+               FROM      CMN_LOB_MASTER
+               WHERE     1                   =   1
+               AND       LOB_ID              =   p_lob_id
+               AND       ORGANIZATION_ID     =   p_organization_id
+               AND       CLIENT_ID           =   p_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      p_return_code       :=   2;
+                         p_return_message    :=   p_return_message||' - '||'No Data-Invalid LOB ID';
+               WHEN      OTHERS
+               THEN      p_return_code       :=   2;
+                         p_return_message    :=   p_return_message||' - '||'Others-Invalid LOB ID';
+          END;
+
+----    Validate Profit Centre ID
+         exists_flag := null;
+
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_profit_centre_master
+                    WHERE   profit_centre_id     =  p_profit_centre_id
+                    AND     lob_id               =  p_lob_id
+                    AND     organization_id      =  p_organization_id
+                    AND     client_id            =  p_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    p_return_code       :=  2;
+                            p_return_message    :=  p_return_message || ' - ' ||
+                                                    'Invalid Profit Centre ID Passed';
+                    WHEN    OTHERS
+                    THEN    p_return_code       :=  2;
+                            p_return_message    :=  p_return_message || ' - ' ||
+                                                    'Invalid Profit Centre ID Passed';
+            END;
+
+
+
+
+----    Validate Requirement ID
+        exists_flag  :=  null;
+        BEGIN  
+                SELECT  'Y'
+                INTO    exists_flag
+                FROM    crm_requirement_headers 
+                WHERE   requirement_id     =   p_requirement_id
+                AND     client_id          =   p_client_id;
+        EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Requirement ID Passed';
+                WHEN    OTHERS
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Requirement ID Passed';
+        END;
+
+----    Validate Application ID
+        exists_flag  :=  null;
+        IF (p_application_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_applicable_applications_master_v
+                    WHERE   application_id       =   p_application_id
+                    AND     client_id            =   p_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    p_return_code       :=   2;
+                            p_return_message    :=   p_return_message || ' - ' ||
+                                                    'Invalid Application ID Passed';
+                    WHEN    OTHERS
+                    THEN    p_return_code       :=   2;
+                            p_return_message    :=   p_return_message || ' - ' ||
+                                                    'Invalid Application ID Passed';
+            END;
+        END IF;
+
+----    Validate Result Reason Category ID
+        exists_flag  :=  null;
+        BEGIN  
+                SELECT  'Y'
+                INTO    exists_flag
+                FROM    cmn_category_master 
+                WHERE   category_id        =   p_result_reason_cat_id
+                AND     client_id          =   p_client_id;
+        EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Result Reason Category ID Passed';
+                WHEN    OTHERS
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Result Reason Category ID Passed';
+        END;
+
+----    Validate Result Reason Sub Category ID
+        exists_flag  :=  null;
+        BEGIN  
+                SELECT  'Y'
+                INTO    exists_flag
+                FROM    cmn_sub_category_master 
+                WHERE   category_id        =   p_result_reason_cat_id
+                AND     sub_category_id    =   p_result_reason_sub_cat_id
+                AND     client_id          =   p_client_id;
+        EXCEPTION
+                WHEN    NO_DATA_FOUND
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Result Reason Sub Category ID Passed';
+                WHEN    OTHERS
+                THEN    p_return_code     := 2;
+                        p_return_message  := p_return_message || ' - ' ||
+                                            'Invalid Result Reason Sub Category ID Passed';
+        END;
+
+----    Validate Competitor Party ID
+        exists_flag  :=  null;
+        IF (p_competitor_party_id is not null)
+        THEN
+            BEGIN  
+                    SELECT  'Y'
+                    INTO    exists_flag
+                    FROM    cmn_party_master_v
+                    WHERE   party_id             =   p_competitor_party_id
+                    AND     client_id            =   p_client_id;
+            EXCEPTION
+                    WHEN    NO_DATA_FOUND
+                    THEN    p_return_code       :=   2;
+                            p_return_message    :=   p_return_message || ' - ' ||
+                                                    'Invalid Competitor Party ID Passed';
+                    WHEN    OTHERS
+                    THEN    p_return_code       :=   2;
+                            p_return_message    :=   p_return_message || ' - ' ||
+                                                    'Invalid Competitor Party ID Passed';
+            END;
+        END IF;
+
+----    Verify if thre is an error, if yes then raise exception and exit out
+        IF    ( p_return_code <> 0)
+        THEN  raise  Some_Error;
+        END   IF;
+
+----      Checking Action
+          IF(UPPER(p_action)IN('I','A','C'))
+          THEN
+
+          p_requirement_result_id     :=   Get_Sequence_ID
+                                        (
+                                             p_client_id,
+                                             p_organization_id,
+                                             p_lob_id,
+                                             p_profit_centre_id,
+                                             UPPER('CRM_REQUIREMENT_RESULTS')
+                                        );
+                                        COMMIT;
+
+          IF(p_requirement_result_id < 0)
+          THEN p_return_code       :=   2;
+               p_return_message    :=   p_return_message||' - '||'Requirement Result ID Cannot be Generated';
+               raise     Some_Error;
+          END IF;
+
+
+
+        -- --  First generate sequence for req result id.
+        --     BEGIN
+        --         SELECT  crm_requirement_results_seq.nextval
+        --         INTO    p_requirement_result_id
+        --         FROM    dual;
+        --     EXCEPTION
+        --         WHEN    OTHERS
+        --         THEN    p_requirement_result_id   :=   null;
+        --     END;
+
+        -- Generate result Number
+           BEGIN
+                SELECT  nvl(max(result_reason_number),0)
+                INTO    vNum
+                FROM    crm_requirement_results
+                WHERE   1   =    1
+                AND     result_reason_cat_id  =   p_result_reason_cat_id
+                AND     requirement_id        =   p_requirement_id
+                AND     client_id             =   p_client_id;
+
+                p_result_reason_number  := vNum + 1;
+           EXCEPTION
+                WHEN    OTHERS
+                THEN    p_result_reason_number   :=   1;
+           END;
+
+        -- Now insert data into 'crm_requirement_results'
+            BEGIN
+                INSERT INTO crm_requirement_results
+                (       CREATION_DATE,
+                        CREATED_BY,
+                        LAST_UPDATE_DATE,
+                        LAST_UPDATED_BY,
+                        START_DATE,
+                        END_DATE,
+                        APPLICATION_ID,
+                        CLIENT_ID,
+                        REQUIREMENT_RESULT_ID,         
+                        REQUIREMENT_ID,
+                        RESULT_REASON_NUMBER,
+                        RESULT_REASON_CAT_ID,
+                        RESULT_REASON_SUB_CAT_ID,
+                        RESULT_DETAILS,
+                        RESULT_AMOUNT,
+                        COMPETITOR_PARTY_ID,
+                        PLACE_LATTITUDE,
+                        PLACE_LONGITUDE,
+                        PLACE_IP_ADDRESS
+                )
+                VALUES
+                (       sysdate,
+                        p_user_id,
+                        sysdate,
+                        p_user_id,
+                        sysdate,
+                        null,
+                        p_application_id,
+                        p_client_id,
+                        p_requirement_result_id,
+                        p_requirement_id,
+                        p_result_reason_number,
+                        p_result_reason_cat_id,
+                        p_result_reason_sub_cat_id,
+                        p_result_details,
+                        p_result_amount,
+                        p_competitor_party_id,
+                        p_place_lattitude,
+                        p_place_longitude,
+                        p_place_ip_address
+                );
+                commit;  
+
+----            Set / Update Sequence 
+                IF      (  SET_Sequence_ID 
+                          (   p_client_id,
+                              p_organization_id,
+                              p_lob_id,
+                              p_profit_centre_id, 
+                              (upper('CRM_REQUIREMENT_RESULTS')),
+                              p_requirement_result_id)
+                        )
+                THEN    commit;
+                ELSE    p_return_code     := 2;
+                        p_return_message  := p_return_message ||  ' - '  ||
+                                          'Requirement Result ID Sequence Can not be Updated..';
+                END  IF;
+
+
+            EXCEPTION
+                WHEN    OTHERS
+                THEN    p_return_code     :=  2;
+                        p_return_message  :=  p_return_message ||  ' - '  ||
+                                             'Unable to create Record ' || SQLERRM;
+                        raise  Some_Error;
+                        RETURN;
+            END; 
+
+        END IF;
+
+        p_return_code      :=  0;
+        p_return_message   :=  'Requirement Result updated successfully';
+        Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,'Requirement Result updated successfully');
+        DBMS_OUTPUT.put_line ('Requirement Result updated successfully');
+
+        RETURN;
+
+   EXCEPTION
+    WHEN       Some_Error
+    THEN       p_return_code    :=  2;
+               p_return_message :=  p_return_message || ' - ' ||
+                                    'Some error Has Occurred...Existing...Unsuccessful Execution';
+               RETURN; 
+
+    WHEN       OTHERS
+    THEN       DBMS_OUTPUT.put_line (p_return_message || ' - ' || SQLERRM);
+               Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,p_return_message || ' - ' || SQLERRM);
+               APEX_ERROR.add_error ( p_error_code       => p_return_message || ' - ' || SQLERRM,
+                                      p0                 => null,
+                                      p_display_location => apex_error.c_inline_with_field_and_notif,
+                                      p_page_item_name   => null 
+                                    );
+               p_return_code    :=  2;
+               p_return_message :=  p_return_message ||  ' - ' || SQLERRM;
+               RETURN;
+END CRM_REQUIREMENT_RESULT_API;
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+

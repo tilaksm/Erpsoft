@@ -1,0 +1,385 @@
+{
+	"variables": [],
+	"info": {
+		"name": "Cashfree PG",
+		"_postman_id": "5e20ce2d-21c7-548c-58cc-8d030648448b",
+		"description": "Cashfree Payment Gateway APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Orders",
+			"description": "",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"url": "{{Base URL}}/api/v1/order/create",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "orderId",
+									"value": "order_001",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "orderAmount",
+									"value": "10",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "orderCurrency",
+									"value": "INR",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "orderNote",
+									"value": "Test order",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "customerEmail",
+									"value": "rohit_sharma@gmail.com",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "customerName",
+									"value": "Rohit Sharma",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "customerPhone",
+									"value": "9909612345",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "returnUrl",
+									"value": "http://localhost/handleResponse.php",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "notifyUrl",
+									"value": "http://localhost/handlePaymentStatus.php",
+									"description": "",
+									"type": "text"
+								}
+							]
+						},
+						"description": "let's you create a Cashfree Order"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order",
+					"request": {
+						"url": "{{Base URL}}/api/v1/order/info/link",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "orderId",
+									"value": "order_001",
+									"description": ""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order Status",
+					"request": {
+						"url": "{{Base URL}}/api/v1/order/info/status",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "orderId",
+									"value": "order_001",
+									"description": ""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger Payment Email",
+					"request": {
+						"url": "{{Base URL}}/api/v1/order/email",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "orderId",
+									"value": "order_001",
+									"description": ""
+								},
+								{
+									"key": "",
+									"value": "",
+									"description": "",
+									"type": "text",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Triggers payment email to the customer"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Refunds",
+			"description": "",
+			"item": [
+				{
+					"name": "Initiate Refund",
+					"request": {
+						"url": "{{Base URL}}/api/v1/order/refund",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "referenceId",
+									"value": "28759",
+									"description": ""
+								},
+								{
+									"key": "refundAmount",
+									"value": "1",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "refundNote",
+									"value": "partial refund",
+									"description": "",
+									"type": "text"
+								}
+							]
+						},
+						"description": "Initiates refund for an existing order. Amount should be less than transaction amount"
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch all refunds",
+					"request": {
+						"url": "{{Base URL}}/api/v1/refunds",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "startDate",
+									"value": "2018-04-02",
+									"description": "yyyy-MM-dd format"
+								},
+								{
+									"key": "endDate",
+									"value": "2018-06-10",
+									"description": "yyyy-MM-dd format"
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch single refund",
+					"request": {
+						"url": "{{Base URL}}/api/v1/refundStatus/",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "refundId",
+									"value": "587",
+									"description": "yyyy-MM-dd format"
+								},
+								{
+									"key": "endDate",
+									"value": "2018-06-10",
+									"description": "yyyy-MM-dd format",
+									"disabled": true
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Settlements",
+			"description": "",
+			"item": [
+				{
+					"name": "Fetch all settlements",
+					"request": {
+						"url": "{{Base URL}}/api/v1/settlements",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "startDate",
+									"value": "2017-04-02",
+									"description": "yyyy-MM-dd format"
+								},
+								{
+									"key": "endDate",
+									"value": "2018-06-10",
+									"description": "yyyy-MM-dd format"
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch settlement",
+					"request": {
+						"url": "{{Base URL}}/api/v1/settlement",
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "appId",
+									"value": "{{appId}}",
+									"description": ""
+								},
+								{
+									"key": "secretKey",
+									"value": "{{secretKey}}",
+									"description": ""
+								},
+								{
+									"key": "settlementId",
+									"value": "46",
+									"description": ""
+								}
+							]
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

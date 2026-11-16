@@ -1,0 +1,453 @@
+--------------------------------------------------------------------------------------------------------------------------------------------------
+----      API to maintain Purchase System Parameters.
+--- -     Written by    : Manali Modak - Kulkarni
+-----     Date Written  : 15th April 2023 
+-----     Modified V1   : Modified to change the Header ID Criterion
+-----     V1 Modified on: 15th April 2023
+--------------------------------------------------------------------------------------------------------------------------------------------------
+create or replace PROCEDURE    PUR_MAINTAIN_SYSTEM_PARAMETERS_API
+(
+          i_return_message         OUT  VARCHAR2       ,
+          i_return_code            OUT  NUMBER         ,
+          i_action                 IN   VARCHAR2       ,
+          i_user_id                IN   NUMBER         ,
+          i_client_id              IN   NUMBER         ,
+          i_lob_id                 IN   NUMBER         ,
+          i_organization_id        IN   NUMBER         ,
+          i_profit_centre_id       IN   NUMBER         ,
+
+          i_parameter_id           IN   OUT  NUMBER    ,
+          i_parameter_code         IN   VARCHAR2       ,
+          i_parameter_name         IN   VARCHAR2       ,
+          i_parameter_value        IN   VARCHAR2       ,
+          i_parameter_details      IN   VARCHAR2       ,
+          i_parameter_clob         IN   CLOB           ,
+          i_parameter_an_flag      IN   VARCHAR2       ,
+          i_initial_value          IN   NUMBER         ,
+          i_increment_factor       IN   NUMBER         ,
+          i_parameter_min_value    IN   VARCHAR2       ,
+          i_parameter_max_value    IN   VARCHAR2       ,
+          i_start_date             IN   DATE           ,
+          i_end_date               IN   DATE
+)
+
+AS
+----      Declare Variables and Cursors required for Data Generation
+          err_message              varchar2(200)  :=   null                     ;
+          exists_flag              varchar2(50)   :=   null                     ;
+          v_transaction_type_id    number         :=   null                     ;
+          v_status_id              number         :=   null                     ;
+          v_status_date            date           :=   null                     ;
+
+          v_return_message         varchar2(4000) :=   i_return_message         ;
+          v_return_code            number         :=   i_return_code            ;
+          v_action                 varchar2(01)   :=   i_action                 ;
+          v_user_id                number         :=   i_user_id                ;
+          v_client_id              number         :=   i_client_id              ;
+          v_lob_id                 number         :=   i_lob_id                 ;
+          v_organization_id        number         :=   i_organization_id        ;
+          v_profit_centre_id       number         :=   i_profit_centre_id       ;
+
+          v_parameter_id           number         :=   i_parameter_id           ;
+          v_parameter_code         varchar2(50)   :=   i_parameter_code         ;
+          v_parameter_name         varchar2(215)  :=   i_parameter_name         ;
+          v_parameter_value        varchar2(256)  :=   i_parameter_value        ;
+          v_parameter_details      varchar2(4000) :=   i_parameter_details      ;
+          v_parameter_clob         clob           :=   i_parameter_clob         ;
+          v_parameter_an_flag      varchar2(01)   :=   i_parameter_an_flag      ;
+          v_initial_value          number         :=   i_initial_value          ;
+          v_increment_factor       number         :=   i_increment_factor       ;
+          v_parameter_min_value    varchar2(256)  :=   i_parameter_min_value    ;
+          v_parameter_max_value    varchar2(256)  :=   i_parameter_max_value    ;
+          v_start_date             date           :=   i_start_date             ;
+          v_end_date               date           :=   i_end_date               ;
+
+          Some_Error                                   EXCEPTION;
+
+BEGIN
+----      Validate Client ID
+          exists_flag    :=   null;
+          BEGIN
+               SELECT    'Y',
+                         client_id
+               INTO      exists_flag,
+                         v_client_id
+               FROM      cmn_client_master
+               WHERE     client_id           =    i_client_id;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'No Data - Invalid Client ID';
+               WHEN      OTHERS
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Others - Invalid Client ID';
+          END;
+
+----      Validate Organization ID
+          exists_flag   :=  null;
+          BEGIN
+               SELECT    'Y',
+                         organization_id
+               INTO      exists_flag,
+                         v_organization_id
+               FROM      cmn_organization_master
+               WHERE     1                   =   1
+               AND       organization_id     =   i_organization_id
+               AND       client_id           =   i_client_id;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'No Data - Invalid Organization ID';
+               WHEN      OTHERS
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'Others - Invalid Organization ID';
+          END;
+
+----      Validate LOB ID
+          exists_flag := null;
+          BEGIN
+               SELECT    'Y',
+                         lob_id
+               INTO      exists_flag,
+                         v_lob_id
+               FROM      cmn_lob_master
+               WHERE     1                   =   1
+               AND       lob_id              =   i_lob_id
+               AND       organization_id     =   i_organization_id
+               AND       client_id           =   i_client_id;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'No Data - Invalid LOB ID';
+               WHEN      OTHERS
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'Others - Invalid LOB ID';
+        END;
+
+----      Validate Profit Centre ID
+          exists_flag := null;
+          BEGIN
+               SELECT    'Y',
+                         profit_centre_id
+               INTO      exists_flag,
+                         v_profit_centre_id
+               FROM      cmn_profit_centre_master
+               WHERE     1                   =   1
+               AND       organization_id     =   i_organization_id
+               AND       lob_id              =   i_lob_id
+               AND       profit_centre_id    =   i_profit_centre_id
+               AND       client_id           =   i_client_id;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'No Data - Invalid Profit Centre ID';
+               WHEN      OTHERS
+               THEN      i_return_code       := 2;
+                         i_return_message    := i_return_message||' - '||'Invalid Profit Centre ID';
+          END;
+
+----      Fetching Default Value for Transaction Type ID
+          BEGIN
+               SELECT    transaction_type_id
+               INTO      v_transaction_type_id
+               FROM      cmn_transaction_types 
+               WHERE     1                                       =    1
+               AND       upper(trim(transaction_type_code))      =    'MANAGE_SYSTEM_PARAMETERS'
+               AND       application_id                          =    801
+               AND       client_id                               =    i_client_id;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      v_transaction_type_id   :=  80102;
+               WHEN      OTHERS
+               THEN      v_transaction_type_id   :=  80102;
+          END;
+
+----      Fetching Default Value for Status ID
+          BEGIN
+               SELECT    status_id
+               INTO      v_status_id
+               FROM      cmn_status_master
+               WHERE     1                             =    1
+               AND       upper(TRIM(STATUS_CODE))      =    'OPEN'
+               AND       client_id                     =    i_client_id;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      v_status_id   :=  10002;
+               WHEN      OTHERS
+               THEN      v_status_id   :=  10002;
+          END;
+
+----      Validate Parameter Name
+          IF(i_parameter_name is null)
+          THEN i_return_code       :=   2;
+               i_return_message    :=   i_return_message||' - '||'Please fill Parameter Name';
+          END IF;
+
+----      Validate Parameter Name, already exists
+          IF(trim(upper(i_action))='I')
+          THEN
+          exists_flag    :=   null;
+          BEGIN
+               SELECT    parameter_name
+               INTO      exists_flag
+               FROM      pur_system_parameters
+               WHERE     1                   =    1
+               AND       parameter_name      =    i_parameter_name
+               AND       client_id           =    i_client_id;
+
+               IF(exists_flag = i_parameter_name)
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Parameter Name Already Exists';
+               END IF;
+          EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      exists_flag    :=   null;
+          END;
+          END IF;
+
+----      Validate Parameter Code
+          IF(i_parameter_code is null)
+          THEN i_return_code       :=   2;
+               i_return_message    :=   i_return_message||' - '||'Please fill Parameter Code';
+          END IF;
+
+----      Validate Parameter Code, already exists
+          IF(trim(upper(i_action))='I')
+          THEN
+          exists_flag    :=   null;
+          BEGIN
+               SELECT    parameter_code
+               INTO      exists_flag
+               FROM      pur_system_parameters
+               WHERE     1                   =    1
+               AND       parameter_code      =    i_parameter_code
+               AND       client_id           =    i_client_id;
+
+               IF(exists_flag = i_parameter_code)
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message||' - '||'Parameter Code Already Exists';
+               END IF;
+               EXCEPTION
+               WHEN      NO_DATA_FOUND
+               THEN      exists_flag    :=   null;
+          END;
+          END IF;
+
+----      Validate Parameter Value
+          IF(i_parameter_value is null)
+          THEN i_return_code       :=  2;
+               i_return_message    :=  i_return_message||' - '||'Please fill Parameter Value';
+          END IF;
+
+----      Validate End Date
+          IF(i_end_date < i_start_date)
+          THEN i_return_code       :=   2;
+               i_return_message    :=   i_return_message||' - '||'End Date should be greater than '||i_start_date;
+          END IF;
+
+----      Validate Minimum Value
+          IF(i_parameter_min_value > i_parameter_max_value)
+          THEN i_return_code       :=   2;
+               i_return_message    :=   i_return_message||' - '||'Minimun Value should be less than Maximum Value';
+          END IF;
+
+----      Checking if there is any error, if return code is =! 0 then it will raise error
+          IF    (i_return_code <> 0)
+          THEN  raise  Some_Error;
+          END IF;
+
+----      Action
+          CASE upper(i_action)
+          WHEN 'I'  THEN NULL;
+          WHEN 'A'  THEN NULL;
+          WHEN 'C'  THEN NULL;
+          WHEN 'U'  THEN NULL;
+          ELSE i_return_code       :=   2;
+               i_return_message    :=   'Invalid Action Passed'||' - '||i_action;
+          END CASE;
+
+----      Checking Action
+          IF(upper(i_action)IN('I','A','C'))
+          THEN
+
+----      Sequence ID
+          i_parameter_id :=   Get_Sequence_ID
+                              (
+                                   i_client_id,
+                                   i_organization_id,
+                                   i_lob_id,
+                                   i_profit_centre_id,
+                                   upper('PUR_SYSTEM_PARAMETERS')
+                              );
+          COMMIT;
+
+          IF   (i_parameter_id < 0)
+          THEN i_return_code       := 2;
+               i_return_message    := i_return_message ||' - '||'Parameter ID Cannot be Generated';
+               raise   Some_Error;
+          END IF;
+
+          BEGIN
+               INSERT INTO PUR_SYSTEM_PARAMETERS
+               (
+                    creation_date            ,
+                    created_by               ,
+                    last_update_date         ,
+                    last_updated_by          ,
+                    start_date               ,
+                    end_date                 ,
+
+                    status_id                ,
+                    status_date              ,
+                    parameter_document       ,
+                    directory_name           ,
+                    file_name                ,
+                    mime_type                ,
+                    char_set                 ,
+                    file_comments            ,
+                    transaction_type_id      ,
+                    place_lattitude          ,
+                    place_longitude          ,
+                    place_ip_address         ,
+
+                    client_id                ,
+                    organization_id          ,
+                    lob_id                   ,
+                    profit_centre_id         ,
+
+                    parameter_id             ,
+                    parameter_code           ,
+                    parameter_name           ,
+                    parameter_value          ,
+                    parameter_details        ,
+                    parameter_clob           ,
+                    parameter_an_flag        ,
+                    initial_value            ,
+                    increment_factor         ,
+                    parameter_min_value      ,
+                    parameter_max_value
+               )
+               VALUES
+               (
+                    sysdate                  ,    ---- creation date
+                    v_user_id                ,    ---- created by
+                    sysdate                  ,    ---- last updated date
+                    v_user_id                ,    ---- last updated by
+                    sysdate                  ,    ---- start date
+                    null                     ,    ---- end date
+
+                    v_status_id              ,
+                    sysdate                  ,    ---- status date
+                    null                     ,    ---- parameter document
+                    null                     ,    ---- directory name
+                    null                     ,    ---- file name
+                    null                     ,    ---- mime type
+                    null                     ,    ---- char set
+                    null                     ,    ---- file comments
+                    v_transaction_type_id    ,
+                    null                     ,    ---- place lattitude
+                    null                     ,    ---- place longitude
+                    null                     ,    ---- place ip address
+
+                    v_client_id              ,
+                    v_organization_id        ,
+                    v_lob_id                 ,
+                    v_profit_centre_id       ,
+
+                    i_parameter_id           ,
+                    v_parameter_code         ,
+                    v_parameter_name         ,
+                    v_parameter_value        ,
+                    v_parameter_details      ,
+                    v_parameter_clob         ,
+                    v_parameter_an_flag      ,
+                    v_initial_value          ,
+                    v_increment_factor       ,
+                    v_parameter_min_value    ,
+                    v_parameter_max_value
+               );
+               commit;
+
+----           Setting Sequence ID
+               IF(SET_Sequence_ID
+               (
+                    i_client_id,
+                    i_organization_id,
+                    i_lob_id,
+                    i_profit_centre_id,
+                    upper('PUR_SYSTEM_PARAMETERS'),
+                    i_parameter_id
+               ))
+               THEN COMMIT;
+               ELSE i_return_code       :=   2;
+                    i_return_message    :=   i_return_message ||' - '|| 'Parameter ID Sequence Cannot be Updated';
+               END IF;
+
+          EXCEPTION
+               WHEN      OTHERS
+               THEN      i_return_code       :=   2;
+                         i_return_message    :=   i_return_message ||' - '|| 'Unable to Create System Parameter' || SQLERRM;
+               raise     Some_Error;
+               RETURN;
+          END;
+
+----      Returning Successfull Message
+          i_return_code       :=   0;
+          i_return_message    :=   'Purchase System Parameter Created Successfully. Parameter Code - '||i_parameter_code;
+          Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,'Purchase System Parameter Created Successfully. Parameter Code - '||i_parameter_code );
+          DBMS_OUTPUT.put_line ('Purchase System Parameter Created Successfully');
+          RETURN;
+
+          ELSE
+               BEGIN
+                    UPDATE    PUR_SYSTEM_PARAMETERS
+                    SET
+                              last_update_date         =    sysdate                  ,
+                              last_updated_by          =    v_user_id                ,
+                              end_date                 =    v_end_date               ,
+
+                              parameter_value          =    v_parameter_value        ,
+                              parameter_details        =    v_parameter_details      ,
+                              parameter_clob           =    v_parameter_clob         ,
+                              parameter_an_flag        =    v_parameter_an_flag      ,
+                              initial_value            =    v_initial_value          ,
+                              increment_factor         =    v_increment_factor       ,
+                              parameter_min_value      =    v_parameter_min_value    ,
+                              parameter_max_value      =    v_parameter_max_value
+                    WHERE     1                        =    1
+                    AND       parameter_id             =    i_parameter_id
+                    AND       profit_centre_id         =    i_profit_centre_id
+                    AND       lob_id                   =    i_lob_id
+                    AND       organization_id          =    i_organization_id
+                    AND       client_id                =    i_client_id;
+                    commit;
+               EXCEPTION
+                    WHEN      OTHERS
+                    THEN      i_return_code       :=   0;
+                              i_return_message    :=   i_return_message|| ' - ' ||'Unable to Update System Parameter'||SQLERRM;
+                              raise Some_Error;
+                              RETURN;
+               END;
+          END IF;
+
+          i_return_code       :=   0;
+          i_return_message    :=   'Purchase System Parameter Updated Successfully. Parameter Code - '||i_parameter_code;
+          Apex_Util.Set_Session_State('LOGIN_MESSAGE' ,'Purchase System Parameter Updated Successfully. Parameter Code - '||i_parameter_code );
+          DBMS_OUTPUT.put_line ('Purchase System Parameter Updated Successfully');
+          RETURN;
+
+----      If any system error occurs, this Exception Block will get Execute 
+          EXCEPTION
+          WHEN Some_Error
+          THEN i_return_code       := 2;
+               i_return_message    := i_return_message ||' - '|| 'Some Error Occurred';
+          RETURN;
+
+          WHEN OTHERS
+          THEN DBMS_OUTPUT.put_line (i_return_message ||' - '|| SQLERRM);
+          Apex_Util.Set_Session_State('LOGIN_MESSAGE',i_return_message ||' - '|| SQLERRM);
+          i_return_code           := 2;
+          i_return_message        := i_return_message ||' - '|| SQLERRM;
+          RETURN;
+END PUR_MAINTAIN_SYSTEM_PARAMETERS_API;
+--------------------------------------------------------------------------------------------------------------------------------------------------
